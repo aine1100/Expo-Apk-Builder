@@ -174,14 +174,42 @@ prebuild_app() {
     fi
 }
 
-# Function to build APK
-build_apk() {
+# Function to build APK with cloud
+build_apk_cloud() {
     local build_profile=${1:-preview}
     
-    print_status "Starting APK build with profile: $build_profile"
+    print_status "Starting cloud APK build with profile: $build_profile"
+    print_status "This will use EAS cloud build (10-20 minutes)"
+    print_status "You can monitor progress at: https://expo.dev"
+    
+    # Start cloud build
+    eas build --platform android --profile $build_profile
+    
+    if [ $? -eq 0 ]; then
+        print_success "Build submitted successfully!"
+        print_status "Your APK will be available for download once the build completes."
+        print_status "Check your email or visit https://expo.dev for the download link."
+    else
+        print_error "Build submission failed!"
+        exit 1
+    fi
+}
+
+# Function to build APK locally
+build_apk_local() {
+    local build_profile=${1:-preview}
+    
+    # Check platform support
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == CYGWIN* ]]; then
+        print_error "Local Android builds are not supported on Windows!"
+        print_error "Use --cloud option or run this script on macOS/Linux"
+        exit 1
+    fi
+    
+    print_status "Starting local APK build with profile: $build_profile"
     print_status "This may take several minutes..."
     
-    # Start the build
+    # Start local build
     eas build --platform android --profile $build_profile --local
     
     if [ $? -eq 0 ]; then
@@ -200,6 +228,58 @@ build_apk() {
     fi
 }
 
+# Function to build APK
+build_apk() {
+    local build_profile=${1:-preview}
+    local use_cloud=false
+    
+    # Check if running on Windows (local builds not supported)
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == CYGWIN* ]]; then
+        print_warning "Windows detected. Local Android builds are not supported on Windows."
+        print_status "Switching to EAS cloud build..."
+        use_cloud=true
+    fi
+    
+    print_status "Starting APK build with profile: $build_profile"
+    
+    if [ "$use_cloud" = true ]; then
+        print_status "Using EAS cloud build (this may take 10-20 minutes)..."
+        print_status "You can monitor progress at: https://expo.dev/accounts/[your-username]/projects/[your-project]/builds"
+        
+        # Start cloud build
+        eas build --platform android --profile $build_profile
+        
+        if [ $? -eq 0 ]; then
+            print_success "Build submitted successfully!"
+            print_status "Your APK will be available for download once the build completes."
+            print_status "Check your email or visit https://expo.dev for the download link."
+        else
+            print_error "Build submission failed!"
+            exit 1
+        fi
+    else
+        print_status "Using local build (this may take several minutes)..."
+        
+        # Start local build
+        eas build --platform android --profile $build_profile --local
+        
+        if [ $? -eq 0 ]; then
+            print_success "APK build completed successfully!"
+            
+            # Try to find the generated APK
+            if [ -d "dist" ]; then
+                apk_file=$(find dist -name "*.apk" | head -1)
+                if [ -n "$apk_file" ]; then
+                    print_success "APK file created: $apk_file"
+                fi
+            fi
+        else
+            print_error "APK build failed!"
+            exit 1
+        fi
+    fi
+}
+
 # Function to show help
 show_help() {
     echo "Expo APK Builder Script"
@@ -209,11 +289,15 @@ show_help() {
     echo "Options:"
     echo "  -p, --profile PROFILE    Build profile to use (default: preview)"
     echo "  -s, --skip-deps         Skip dependency installation"
+    echo "  -c, --cloud             Force cloud build (useful for Windows)"
+    echo "  -l, --local             Force local build (macOS/Linux only)"
     echo "  -h, --help              Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                      # Build with default preview profile"
+    echo "  $0                      # Build with default settings (auto-detects platform)"
     echo "  $0 -p production        # Build with production profile"
+    echo "  $0 --cloud              # Force cloud build (Windows users)"
+    echo "  $0 --local              # Force local build (macOS/Linux users)"
     echo "  $0 --skip-deps          # Skip dependency installation"
 }
 
@@ -221,6 +305,8 @@ show_help() {
 main() {
     local build_profile="preview"
     local skip_deps=false
+    local force_cloud=false
+    local force_local=false
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -231,6 +317,14 @@ main() {
                 ;;
             -s|--skip-deps)
                 skip_deps=true
+                shift
+                ;;
+            -c|--cloud)
+                force_cloud=true
+                shift
+                ;;
+            -l|--local)
+                force_local=true
                 shift
                 ;;
             -h|--help)
@@ -245,6 +339,12 @@ main() {
         esac
     done
     
+    # Check for conflicting options
+    if [ "$force_cloud" = true ] && [ "$force_local" = true ]; then
+        print_error "Cannot use both --cloud and --local options simultaneously"
+        exit 1
+    fi
+    
     print_status "Starting Expo APK build process..."
     
     # Run the build process
@@ -257,10 +357,17 @@ main() {
     fi
     
     prebuild_app
-    build_apk "$build_profile"
+    
+    # Override build type if forced
+    if [ "$force_cloud" = true ]; then
+        build_apk_cloud "$build_profile"
+    elif [ "$force_local" = true ]; then
+        build_apk_local "$build_profile"
+    else
+        build_apk "$build_profile"
+    fi
     
     print_success "Build process completed!"
-    print_status "Your APK should be in the dist/ directory or the path shown above."
 }
 
 # Trap to handle interruption
