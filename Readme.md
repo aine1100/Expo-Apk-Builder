@@ -140,7 +140,7 @@ ls -la app.json app.config.js app.config.ts
 ```bash
 # Increase Node.js memory limit
 export NODE_OPTIONS="--max-old-space-size=4096"
-./build-apk.sh
+./index.sh
 ```
 
 #### Android SDK issues
@@ -159,7 +159,7 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 For additional debugging information, run with verbose output:
 ```bash
 set -x  # Enable debug mode
-./build-apk.sh
+./index.sh
 set +x  # Disable debug mode
 ```
 
@@ -171,7 +171,7 @@ Add to `.git/hooks/pre-push`:
 ```bash
 #!/bin/bash
 echo "Building APK before push..."
-./build-apk.sh --skip-deps
+./index.sh --skip-deps
 ```
 
 ### CI/CD Integration
@@ -180,8 +180,8 @@ For GitHub Actions:
 ```yaml
 - name: Build APK
   run: |
-    chmod +x build-apk.sh
-    ./build-apk.sh --profile production
+    chmod +x index.sh
+    ./index.sh --profile production
 ```
 
 ## 📝 Build Profiles Guide
