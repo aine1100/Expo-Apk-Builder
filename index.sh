@@ -388,7 +388,8 @@ show_help() {
     echo ""
     echo "Options:"
     echo "  -p, --profile PROFILE    Build profile to use (default: preview)"
-    echo "  -s, --skip-deps         Skip dependency installation"
+    echo "  -s, --skip-deps         Skip dependency installation (deprecated, use --no-install)"
+    echo "  --no-install            Skip dependency installation completely"
     echo "  -c, --cloud             Force cloud build (get APK download link)"
     echo "  -l, --local             Force local build (macOS/Linux only)"
     echo "  -a, --aab-to-apk        Build AAB via cloud, convert to APK locally (Windows-friendly)"
@@ -398,10 +399,16 @@ show_help() {
     echo "Examples:"
     echo "  $0                      # Auto-detect platform and build accordingly"
     echo "  $0 -p production        # Build with production profile"
+    echo "  $0 --no-install         # Skip node_modules installation completely"
     echo "  $0 --cloud              # Force cloud build (get download link)"
     echo "  $0 --local              # Force local build (macOS/Linux)"
     echo "  $0 --aab-to-apk         # Build AAB via cloud, convert to APK (Windows)"
     echo "  $0 --convert-aab app.aab # Convert existing AAB to APK"
+    echo "  $0 -p production --no-install # Production build without installing deps"
+    echo ""
+    echo "Dependency Management:"
+    echo "  --no-install: Completely skip npm/yarn install (fastest)"
+    echo "  --skip-deps:  Legacy alias for --no-install"
     echo ""
     echo "Platform Support:"
     echo "  Windows: Use --cloud or --aab-to-apk options"
@@ -424,8 +431,11 @@ main() {
                 build_profile="$2"
                 shift 2
                 ;;
-            -s|--skip-deps)
+            -s|--skip-deps|--no-install)
                 skip_deps=true
+                if [[ "$1" == "--no-install" ]]; then
+                    print_status "Using --no-install flag (recommended over --skip-deps)"
+                fi
                 shift
                 ;;
             -c|--cloud)
@@ -488,7 +498,21 @@ main() {
     login_eas
     setup_eas
     
-    if [ "$skip_deps" = false ]; then
+    # Handle dependency installation
+    if [ "$skip_deps" = true ]; then
+        print_warning "Skipping dependency installation (--no-install flag used)"
+        print_status "Assuming node_modules are already up to date..."
+        
+        # Basic check to ensure node_modules exists
+        if [ ! -d "node_modules" ]; then
+            print_error "node_modules directory not found!"
+            print_error "Either run without --no-install flag or manually install dependencies first:"
+            print_error "  npm install  # or yarn install"
+            exit 1
+        fi
+        
+        print_success "Using existing node_modules"
+    else
         install_dependencies
     fi
     
