@@ -76,6 +76,17 @@ check_prerequisites() {
         fi
     fi
     
+    # Check for bundletool (needed for AAB to APK conversion)
+    if ! command_exists bundletool; then
+        print_warning "bundletool not found. Checking for Java..."
+        if ! command_exists java; then
+            print_warning "Java not found. You'll need Java to convert AAB to APK."
+            print_status "Please install Java JDK 8+ from: https://adoptium.net/"
+        else
+            print_status "Java found. bundletool will be downloaded automatically if needed."
+        fi
+    fi
+    
     print_success "Prerequisites check completed!"
 }
 
@@ -174,7 +185,96 @@ prebuild_app() {
     fi
 }
 
-# Function to build APK with cloud
+# Function to download bundletool if needed
+download_bundletool() {
+    local bundletool_dir="$HOME/.expo/bundletool"
+    local bundletool_jar="$bundletool_dir/bundletool.jar"
+    local bundletool_url="https://github.com/google/bundletool/releases/latest/download/bundletool-all-1.15.6.jar"
+    
+    if [ ! -f "$bundletool_jar" ]; then
+        print_status "Downloading bundletool..."
+        mkdir -p "$bundletool_dir"
+        
+        if command_exists curl; then
+            curl -L -o "$bundletool_jar" "$bundletool_url"
+        elif command_exists wget; then
+            wget -O "$bundletool_jar" "$bundletool_url"
+        else
+            print_error "Neither curl nor wget found. Please download bundletool manually."
+            print_error "Download from: $bundletool_url"
+            print_error "Save to: $bundletool_jar"
+            exit 1
+        fi
+        
+        if [ $? -eq 0 ]; then
+            print_success "bundletool downloaded successfully!"
+        else
+            print_error "Failed to download bundletool"
+            exit 1
+        fi
+    fi
+    
+    echo "$bundletool_jar"
+}
+
+# Function to convert AAB to APK
+convert_aab_to_apk() {
+    local aab_file="$1"
+    local output_dir="$2"
+    
+    if [ ! -f "$aab_file" ]; then
+        print_error "AAB file not found: $aab_file"
+        return 1
+    fi
+    
+    print_status "Converting AAB to APK..."
+    
+    # Download bundletool if needed
+    local bundletool_jar=$(download_bundletool)
+    
+    # Create output directory
+    mkdir -p "$output_dir"
+    
+    # Generate APKs from AAB
+    local apks_file="$output_dir/app.apks"
+    java -jar "$bundletool_jar" build-apks \
+        --bundle="$aab_file" \
+        --output="$apks_file" \
+        --mode=universal
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to generate APKs from AAB"
+        return 1
+    fi
+    
+    # Extract universal APK
+    local temp_dir="$output_dir/temp_apks"
+    mkdir -p "$temp_dir"
+    
+    if command_exists unzip; then
+        unzip -q "$apks_file" -d "$temp_dir"
+    else
+        print_error "unzip command not found. Cannot extract APK from APKS archive."
+        return 1
+    fi
+    
+    # Find and copy the universal APK
+    local universal_apk=$(find "$temp_dir" -name "universal.apk" | head -1)
+    if [ -n "$universal_apk" ]; then
+        local final_apk="$output_dir/app-universal.apk"
+        cp "$universal_apk" "$final_apk"
+        
+        # Clean up temp files
+        rm -rf "$temp_dir"
+        rm -f "$apks_file"
+        
+        print_success "APK created: $final_apk"
+        return 0
+    else
+        print_error "Universal APK not found in generated APKs"
+        return 1
+    fi
+}
 build_apk_cloud() {
     local build_profile=${1:-preview}
     
@@ -289,16 +389,23 @@ show_help() {
     echo "Options:"
     echo "  -p, --profile PROFILE    Build profile to use (default: preview)"
     echo "  -s, --skip-deps         Skip dependency installation"
-    echo "  -c, --cloud             Force cloud build (useful for Windows)"
+    echo "  -c, --cloud             Force cloud build (get APK download link)"
     echo "  -l, --local             Force local build (macOS/Linux only)"
+    echo "  -a, --aab-to-apk        Build AAB via cloud, convert to APK locally (Windows-friendly)"
+    echo "  --convert-aab PATH      Convert existing AAB file to APK"
     echo "  -h, --help              Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                      # Build with default settings (auto-detects platform)"
+    echo "  $0                      # Auto-detect platform and build accordingly"
     echo "  $0 -p production        # Build with production profile"
-    echo "  $0 --cloud              # Force cloud build (Windows users)"
-    echo "  $0 --local              # Force local build (macOS/Linux users)"
-    echo "  $0 --skip-deps          # Skip dependency installation"
+    echo "  $0 --cloud              # Force cloud build (get download link)"
+    echo "  $0 --local              # Force local build (macOS/Linux)"
+    echo "  $0 --aab-to-apk         # Build AAB via cloud, convert to APK (Windows)"
+    echo "  $0 --convert-aab app.aab # Convert existing AAB to APK"
+    echo ""
+    echo "Platform Support:"
+    echo "  Windows: Use --cloud or --aab-to-apk options"
+    echo "  macOS/Linux: All options supported"
 }
 
 # Main function
@@ -307,6 +414,8 @@ main() {
     local skip_deps=false
     local force_cloud=false
     local force_local=false
+    local aab_to_apk=false
+    local convert_aab_path=""
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -327,6 +436,14 @@ main() {
                 force_local=true
                 shift
                 ;;
+            -a|--aab-to-apk)
+                aab_to_apk=true
+                shift
+                ;;
+            --convert-aab)
+                convert_aab_path="$2"
+                shift 2
+                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -340,9 +457,28 @@ main() {
     done
     
     # Check for conflicting options
-    if [ "$force_cloud" = true ] && [ "$force_local" = true ]; then
-        print_error "Cannot use both --cloud and --local options simultaneously"
+    local option_count=0
+    [ "$force_cloud" = true ] && ((option_count++))
+    [ "$force_local" = true ] && ((option_count++))
+    [ "$aab_to_apk" = true ] && ((option_count++))
+    [ -n "$convert_aab_path" ] && ((option_count++))
+    
+    if [ $option_count -gt 1 ]; then
+        print_error "Cannot use multiple build method options simultaneously"
         exit 1
+    fi
+    
+    # Handle AAB conversion only
+    if [ -n "$convert_aab_path" ]; then
+        print_status "Converting AAB to APK..."
+        local output_dir="./apk_output"
+        if convert_aab_to_apk "$convert_aab_path" "$output_dir"; then
+            print_success "Conversion completed! APK: $output_dir/app-universal.apk"
+        else
+            print_error "Conversion failed!"
+            exit 1
+        fi
+        return
     fi
     
     print_status "Starting Expo APK build process..."
@@ -358,8 +494,10 @@ main() {
     
     prebuild_app
     
-    # Override build type if forced
-    if [ "$force_cloud" = true ]; then
+    # Choose build method
+    if [ "$aab_to_apk" = true ]; then
+        build_aab_to_apk "$build_profile"
+    elif [ "$force_cloud" = true ]; then
         build_apk_cloud "$build_profile"
     elif [ "$force_local" = true ]; then
         build_apk_local "$build_profile"
