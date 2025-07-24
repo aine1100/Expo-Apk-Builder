@@ -72,6 +72,7 @@ Before using this script, ensure you have:
 |--------|-------|-------------|---------|
 | `--profile` | `-p` | Build profile to use | `preview` |
 | `--skip-deps` | `-s` | Skip dependency installation | `false` |
+| `--no-install` | `-n` | Skip node_modules installation | `false` |
 | `--help` | `-h` | Show help message | - |
 
 ## 🔧 Configuration
