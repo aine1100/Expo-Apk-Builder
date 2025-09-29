@@ -288,7 +288,7 @@ xcrun --sdk iphoneos --show-sdk-path
 
 ## ⚙️ Configuration
 
-### Build Profiles
+<<<<<<< HEAD
 
 The script uses EAS build profiles from `eas.json`. Common profiles:
 
@@ -499,4 +499,7 @@ chmod +x index.sh
 
 ---
 
-**Happy Building! 🚀**
+
+**Happy Building! 🎉**
+
+> Made with ❤️ for the Expo community
