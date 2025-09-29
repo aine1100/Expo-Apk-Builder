@@ -1,258 +1,502 @@
 # Expo APK Builder Script
 
-A bash script that automates the process of building APK files locally for Expo applications, eliminating common issues and streamlining the build workflow.
+A comprehensive script for building Android APKs and iOS IPAs from Expo projects using multiple build methods including native toolchains.
 
 ## 🚀 Features
 
-- **Automated Prerequisites Check** - Verifies all required tools and dependencies
-- **Smart Dependency Management** - Detects and uses yarn or npm automatically
-- **EAS Integration** - Handles EAS CLI setup and authentication seamlessly
-- **Local Building** - Builds APK files locally without cloud dependencies
-- **Error Handling** - Comprehensive error detection and user-friendly messages
-- **Colored Output** - Clear, colored terminal output for better visibility
-- **Flexible Profiles** - Support for different build profiles (preview, production, etc.)
-- **Cross-Platform** - Works on macOS, Linux, and Windows (with WSL/Git Bash)
+- **Multiple Build Methods**: EAS Cloud, EAS Local, Native Android SDK, Native Xcode
+- **Cross-Platform Support**: Windows, macOS, and Linux
+- **Automatic Prerequisites Detection**: Validates required tools and SDKs
+- **Flexible Configuration**: Support for multiple build profiles
+- **AAB to APK Conversion**: Convert Android App Bundles to APKs locally
+- **Comprehensive Error Handling**: Detailed error messages and troubleshooting guides
 
-## 📋 Prerequisites
+## 📋 Table of Contents
 
-Before using this script, ensure you have:
-
-- **Node.js** (v16 or higher)
-- **npm** or **yarn** package manager
-- **Git** (for cloning and version control)
-- An **Expo account** (free registration at expo.dev)
-- **Android development environment** (if building locally)
-
-> **Note:** The script will automatically install Expo CLI and EAS CLI if they're missing.
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Build Methods](#build-methods)
+- [Prerequisites](#prerequisites)
+- [Usage Examples](#usage-examples)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Platform Support](#platform-support)
 
 ## 🛠 Installation
 
-1. **Download the script** to your Expo project root directory:
+1. **Download the script**:
    ```bash
-   # Option 1: Copy the script content and save as index.sh
-   # Option 2: Download directly (if hosted)
-   curl -o index.sh [script-url]
+   curl -O https://raw.githubusercontent.com/your-repo/expo-apk-builder/main/index.sh
+   chmod +x index.sh
    ```
 
-2. **Make the script executable**:
+2. **Make it executable**:
    ```bash
    chmod +x index.sh
    ```
 
-3. **Verify installation**:
+3. **Run from your Expo project directory**:
    ```bash
-   ./index.sh --help
+   ./index.sh
    ```
 
-## 📖 Usage
+## ⚡ Quick Start
+
+```bash
+# Basic APK build (auto-detects best method for your platform)
+./index.sh
+
+# Build with specific profile
+./index.sh -p production
+
+# Native Android build (fastest, works on all platforms)
+./index.sh --native-android
+
+# Native iOS build (macOS only)
+./index.sh --native-ios
+
+# Build both platforms natively
+./index.sh --native-both
+```
+
+## 🏗 Build Methods
+
+### 1. Native Android Build (`--native-android`)
+**Recommended for Android development**
+
+Uses Android SDK and Gradle directly for fastest builds.
+
+**Advantages**:
+- ✅ Works on Windows, macOS, and Linux
+- ✅ Fastest build times (5-10 minutes)
+- ✅ Full control over build process
+- ✅ No cloud dependencies
+- ✅ Works offline
+
+**Requirements**:
+- Android SDK
+- Java JDK 8+
+- Gradle (or Gradle wrapper)
+
+### 2. Native iOS Build (`--native-ios`)
+**Recommended for iOS development**
+
+Uses Xcode and iOS SDK directly for complete control.
+
+**Advantages**:
+- ✅ Full Xcode integration
+- ✅ Native code signing
+- ✅ Complete iOS toolchain access
+- ✅ No cloud dependencies
+
+**Requirements**:
+- macOS only
+- Xcode 12+
+- iOS SDK
+- CocoaPods
+- Command Line Tools
+
+### 3. Native Both Platforms (`--native-both`)
+**Recommended for cross-platform development**
+
+Builds both Android and iOS using native toolchains.
+
+**Behavior**:
+- Checks prerequisites for both platforms
+- Builds Android first, then iOS
+- Continues with available platforms if one fails
+- Generates comprehensive build report
+
+### 4. EAS Cloud Build (`--cloud`)
+**Good for CI/CD and complex builds**
+
+Uses Expo's cloud build service.
+
+**Advantages**:
+- ✅ Works on any platform
+- ✅ Handles complex native dependencies
+- ✅ Professional build environment
+
+**Disadvantages**:
+- ❌ Requires internet connection
+- ❌ Slower (10-20 minutes)
+- ❌ Requires EAS account
+
+### 5. EAS Local Build (`--local`)
+**Good for advanced users**
+
+Uses EAS build system locally.
+
+**Limitations**:
+- ❌ Not supported on Windows
+- ❌ Requires Docker setup
+- ❌ Complex configuration
+
+### 6. AAB to APK Conversion (`--aab-to-apk`)
+**Windows-friendly option**
+
+Builds AAB via cloud, converts to APK locally.
+
+**Use Case**:
+- Windows users who need APK files
+- When Play Store AAB is not suitable
+
+## 📦 Prerequisites
+
+### For Native Android Builds
+
+#### Automatic Detection
+The script automatically detects Android SDK in common locations:
+- `$ANDROID_HOME`
+- `$ANDROID_SDK_ROOT`
+- `~/Android/Sdk` (Linux/macOS)
+- `~/Library/Android/sdk` (macOS)
+- `%LOCALAPPDATA%\Android\Sdk` (Windows)
+
+#### Required Tools
+- **Android SDK**: Install via Android Studio
+- **Java JDK 8-17**: Download from [Adoptium](https://adoptium.net/)
+- **Gradle**: Usually included with project (`./gradlew`)
+- **Build Tools**: Install via Android Studio SDK Manager
+
+#### Setup Commands
+
+**macOS**:
+```bash
+# Install Android Studio
+brew install --cask android-studio
+
+# Set environment variables (add to ~/.zshrc)
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export ANDROID_SDK_ROOT=$ANDROID_HOME
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/tools
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+```
+
+**Linux**:
+```bash
+# Download Android Studio from https://developer.android.com/studio
+
+# Set environment variables (add to ~/.bashrc)
+export ANDROID_HOME=$HOME/Android/Sdk
+export ANDROID_SDK_ROOT=$ANDROID_HOME
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/tools
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+```
+
+**Windows**:
+```cmd
+# Download Android Studio from https://developer.android.com/studio
+
+# Set environment variables
+setx ANDROID_HOME "%LOCALAPPDATA%\Android\Sdk"
+setx ANDROID_SDK_ROOT "%ANDROID_HOME%"
+setx PATH "%PATH%;%ANDROID_HOME%\emulator;%ANDROID_HOME%\tools;%ANDROID_HOME%\platform-tools"
+```
+
+### For Native iOS Builds
+
+#### Required Tools (macOS only)
+- **Xcode 12+**: Install from Mac App Store
+- **iOS SDK**: Included with Xcode
+- **Command Line Tools**: `xcode-select --install`
+- **CocoaPods**: `sudo gem install cocoapods`
+
+#### Setup Commands
+```bash
+# Install Xcode from Mac App Store, then:
+
+# Install command line tools
+xcode-select --install
+
+# Set Xcode developer directory
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Accept license
+sudo xcodebuild -license accept
+
+# Install CocoaPods
+sudo gem install cocoapods
+
+# Verify installation
+xcodebuild -version
+xcrun --sdk iphoneos --show-sdk-path
+```
+
+## 💡 Usage Examples
 
 ### Basic Usage
 
 ```bash
-# Build APK with default settings
+# Auto-detect platform and build method
 ./index.sh
+
+# Build with production profile
+./index.sh -p production
+
+# Skip dependency installation (if already installed)
+./index.sh --no-install
+```
+
+### Native Builds
+
+```bash
+# Android native build (recommended)
+./index.sh --native-android
+
+# iOS native build (macOS only)
+./index.sh --native-ios
+
+# Both platforms natively
+./index.sh --native-both
+
+# Native build with custom profile
+./index.sh --native-android -p release
+```
+
+### Cloud Builds
+
+```bash
+# Force cloud build
+./index.sh --cloud
+
+# Cloud build with production profile
+./index.sh --cloud -p production
+```
+
+### AAB Conversion
+
+```bash
+# Build AAB via cloud, convert to APK
+./index.sh --aab-to-apk
+
+# Convert existing AAB file
+./index.sh --convert-aab path/to/app.aab
 ```
 
 ### Advanced Usage
 
 ```bash
-# Build with specific profile
-./index.sh --profile production
+# Production build without dependencies installation
+./index.sh -p production --no-install --native-android
 
-# Skip dependency installation (faster if deps are up-to-date)
-./index.sh --skip-deps
-
-# Combine options
-./index.sh --profile staging --skip-deps
+# Debug build for both platforms
+./index.sh -p debug --native-both
 ```
 
-### Command Line Options
+## ⚙️ Configuration
 
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--profile` | `-p` | Build profile to use | `preview` |
-| `--skip-deps` | `-s` | Skip dependency installation | `false` |
-| `--help` | `-h` | Show help message | - |
+### Build Profiles
 
-## 🔧 Configuration
+The script uses EAS build profiles from `eas.json`. Common profiles:
 
-### EAS Build Profiles
+- `preview`: Development builds with debugging
+- `production`: Release builds for distribution
+- `debug`: Debug builds with full debugging info
 
-The script uses EAS build profiles defined in `eas.json`. Common profiles include:
+### Native Build Configuration
 
-```json
-{
-  "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "apk"
-      }
-    }
-  }
-}
+For native builds, the script uses sensible defaults:
+
+**Android**:
+- Debug builds: `assembleDebug`
+- Release builds: `assembleRelease`
+- Automatic keystore handling
+- Gradle wrapper preferred
+
+**iOS**:
+- Debug builds: Debug configuration
+- Release builds: Release configuration
+- Automatic code signing
+- CocoaPods dependency management
+
+### Output Structure
+
+Native builds organize artifacts in a standardized structure:
+
+```
+builds/
+├── android/
+│   ├── app-preview.apk
+│   └── build-info.json
+├── ios/
+│   ├── app-preview.ipa
+│   └── build-info.json
+└── build-summary.json
 ```
 
-### First-Time Setup
+## 🔧 Troubleshooting
 
-When running the script for the first time:
+### Common Android Issues
 
-1. **EAS Login**: You'll be prompted to log in to your Expo account
-2. **EAS Configuration**: The script will create `eas.json` if it doesn't exist
-3. **Prebuild**: Android project files will be generated if needed
-
-## 📁 Output
-
-After a successful build, you'll find your APK file in:
-- `dist/` directory (most common)
-- Project root directory
-- Path displayed in the success message
-
-## 🐛 Troubleshooting
-
-### Common Issues and Solutions
-
-#### "No Expo configuration file found"
+**"Android SDK not found"**
 ```bash
-# Ensure you're in the project root directory
-ls -la app.json app.config.js app.config.ts
+# Check environment variables
+echo $ANDROID_HOME
+echo $ANDROID_SDK_ROOT
+
+# Set manually if needed
+export ANDROID_HOME=/path/to/android/sdk
 ```
 
-#### "Node.js is not installed"
+**"Gradle build failed"**
 ```bash
-# Install Node.js from nodejs.org or using a package manager
-# macOS: brew install node
-# Ubuntu: sudo apt install nodejs npm
+# Clean and rebuild
+cd android
+./gradlew clean
+./gradlew assembleRelease
 ```
 
-#### "Build failed" errors
+**"Java version incompatible"**
 ```bash
-# Check your app.json/app.config.js configuration
-# Ensure all required fields are present:
-# - name, slug, version, orientation, icon, etc.
+# Check Java version
+java -version
+
+# Install compatible JDK (8-17)
+# Download from https://adoptium.net/
 ```
 
-#### Memory issues during build
+### Common iOS Issues
+
+**"Xcode not found"**
 ```bash
-# Increase Node.js memory limit
-export NODE_OPTIONS="--max-old-space-size=4096"
-./index.sh
+# Install command line tools
+xcode-select --install
+
+# Set Xcode path
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Verify
+xcodebuild -version
 ```
 
-#### Android SDK issues
+**"CocoaPods installation failed"**
 ```bash
-# Ensure Android SDK is properly configured
-# Set ANDROID_HOME environment variable
-export ANDROID_HOME=$HOME/Android/Sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/tools
-export PATH=$PATH:$ANDROID_HOME/tools/bin
-export PATH=$PATH:$ANDROID_HOME/platform-tools
+# Update CocoaPods
+sudo gem install cocoapods
+
+# Clear cache and reinstall
+cd ios
+rm -rf Pods Podfile.lock
+pod install
 ```
 
-### Debug Mode
-
-For additional debugging information, run with verbose output:
+**"Code signing failed"**
 ```bash
-set -x  # Enable debug mode
-./index.sh
-set +x  # Disable debug mode
+# Check certificates
+security find-identity -v -p codesigning
+
+# Use automatic signing in Xcode
+# Or configure manual signing with proper profiles
 ```
 
-## 🔄 Workflow Integration
+### General Issues
 
-### Git Hooks
+**"Command not found"**
+- Ensure all required tools are installed
+- Check PATH environment variable
+- Restart terminal after installing tools
 
-Add to `.git/hooks/pre-push`:
+**"Permission denied"**
 ```bash
-#!/bin/bash
-echo "Building APK before push..."
-./index.sh --skip-deps
+# Make script executable
+chmod +x index.sh
+
+# On Windows, run as Administrator if needed
 ```
 
-### CI/CD Integration
+**"Build artifacts not found"**
+- Check build logs for errors
+- Ensure build completed successfully
+- Verify output directory permissions
 
-For GitHub Actions:
-```yaml
-- name: Build APK
-  run: |
-    chmod +x index.sh
-    ./index.sh --profile production
-```
+## 🖥 Platform Support
 
-## 📝 Build Profiles Guide
+| Feature | Windows | macOS | Linux |
+|---------|---------|-------|-------|
+| Native Android | ✅ | ✅ | ✅ |
+| Native iOS | ❌ | ✅ | ❌ |
+| EAS Cloud | ✅ | ✅ | ✅ |
+| EAS Local | ❌ | ✅ | ✅ |
+| AAB Conversion | ✅ | ✅ | ✅ |
 
-### Preview Profile (Default)
-- **Purpose**: Testing and development
-- **Optimization**: Minimal
-- **Size**: Larger file size
-- **Build Time**: Faster
+### Platform-Specific Notes
 
-### Production Profile
-- **Purpose**: App store releases
-- **Optimization**: Full optimization
-- **Size**: Smaller file size
-- **Build Time**: Slower
+**Windows**:
+- Native Android builds fully supported
+- iOS builds require macOS (Apple requirement)
+- Use `--native-android` or `--cloud` options
+- PowerShell and CMD both supported
 
-### Custom Profiles
-Create custom profiles in `eas.json`:
-```json
-{
-  "build": {
-    "staging": {
-      "android": {
-        "buildType": "apk",
-        "developmentClient": false
-      }
-    }
-  }
-}
-```
+**macOS**:
+- All build methods supported
+- Best platform for cross-platform development
+- Native iOS builds only available here
 
-## 🚨 Security Notes
+**Linux**:
+- Native Android builds fully supported
+- iOS builds not possible (Apple limitation)
+- Good for Android-focused development
 
-- **API Keys**: Never commit sensitive API keys to version control
-- **Environment Variables**: Use environment variables for sensitive data
-- **Build Logs**: Review build logs for exposed sensitive information
+## 📝 Command Reference
 
-## 📊 Performance Tips
+### Options
 
-1. **Skip Dependencies**: Use `--skip-deps` when dependencies haven't changed
-2. **Local Cache**: Keep `node_modules` and build cache between builds
-3. **Profile Selection**: Use `preview` profile for development builds
-4. **Incremental Builds**: EAS supports incremental builds for faster subsequent builds
+| Option | Description | Example |
+|--------|-------------|---------|
+| `-p, --profile` | Build profile | `./index.sh -p production` |
+| `--no-install` | Skip dependency installation | `./index.sh --no-install` |
+| `--native-android` | Native Android build | `./index.sh --native-android` |
+| `--native-ios` | Native iOS build | `./index.sh --native-ios` |
+| `--native-both` | Native builds for both | `./index.sh --native-both` |
+| `--cloud` | Force cloud build | `./index.sh --cloud` |
+| `--local` | Force local build | `./index.sh --local` |
+| `--aab-to-apk` | Build AAB, convert to APK | `./index.sh --aab-to-apk` |
+| `--convert-aab` | Convert existing AAB | `./index.sh --convert-aab app.aab` |
+| `-h, --help` | Show help | `./index.sh --help` |
+
+### Build Profiles
+
+Common profiles you can use with `-p` option:
+
+- `preview` (default): Development builds
+- `production`: Release builds for stores
+- `debug`: Debug builds with symbols
+- `development`: Development builds with debugging
 
 ## 🤝 Contributing
 
-To improve this script:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test on multiple platforms
+5. Submit a pull request
 
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Test** your changes thoroughly
-4. **Submit** a pull request
+## 📄 License
 
-## 📜 License
-
-This script is provided as-is under the MIT License. See LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🆘 Support
 
-- **Expo Documentation**: [docs.expo.dev](https://docs.expo.dev)
-- **EAS Build Guide**: [docs.expo.dev/build/introduction](https://docs.expo.dev/build/introduction)
-- **Community Forum**: [forums.expo.dev](https://forums.expo.dev)
+If you encounter issues:
 
-## 📈 Version History
+1. Check the [Troubleshooting](#troubleshooting) section
+2. Verify your [Prerequisites](#prerequisites)
+3. Run with verbose output: `bash -x ./index.sh`
+4. Open an issue with full error logs
 
-- **v1.0.0**: Initial release with basic APK building functionality
-- **v1.1.0**: Added build profile support and improved error handling
-- **v1.2.0**: Enhanced dependency management and colored output
+## 🔄 Updates
+
+To update the script:
+
+```bash
+# Download latest version
+curl -O https://raw.githubusercontent.com/your-repo/expo-apk-builder/main/index.sh
+chmod +x index.sh
+```
 
 ---
 
-**Happy Building! 🎉**
-
-> Made with ❤️ for the Expo community
+**Happy Building! 🚀**
